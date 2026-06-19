@@ -157,16 +157,106 @@ def show_apostle_dashboard(leader_name):
     conn.close()
     input("\nPress Enter to return to the main menu...")
 
+def add_new_member():
+    """Allows leaders to register a new member into the system."""
+    print(f"\n------------------------------------------")
+    print(f"📝 REGISTER NEW MEMBER")
+    print(f"------------------------------------------")
+
+    first_name = input("Enter first name: ").strip()
+    last_name = input("Enter last name: ").strip()
+
+    if not first_name or not last_name:
+        print("❌ Error: First and last names cannot be blank.")
+        return
+    
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    #show available leaders so the user can assign the member correctly
+    print("\nAvailable leaders to assignn this membe to:")
+    cursor.execute("SELECT leader_id, name, role FROM leaders")
+    leaders = cursor.fetchall()
+    for l_id, name, role in leaders:
+        print(f"    [{l_id}] {name} ({role})")
+    
+    try:
+        leader_id = int(input("\nEnter Leader ID number: "))
+    except ValueError:
+        print("❌ Error: Invalid ID layout. ID Must be a number.")
+        conn.close()
+        return
+    
+    #inser the new member into the database
+    cursor.execute('''
+        INSERT INTO members (first_name, last_name, assigned_leader_id)
+        VALUES (?, ?, ?)
+    ''', (first_name, last_name, leader_id))
+
+    conn.commit()
+    print(f"\n✓ Success: {first_name} {last_name} has been digitally registered!")
+    conn.close()
+    input("\nPress Enter to return...")
+
+def record_contribution():
+    """Allows leaders to capture a paper tithe or collection reception digitally."""
+    print(f"\n------------------------------------------")
+    print(f"💰 RECORD FINANCIAL CONTRIBUTION")
+    print(f"------------------------------------------")    
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # show registered members so the leader can select who paid
+    print("Select the member making the contribution:")
+    cursor.execute("SELECT member_id, first_name, last_name FROM members")
+    members = cursor.fetchall()
+    for m_id, first, last in members:
+        print(f"    [{m_id}] {first} {last}")
+    
+    try:
+        member_id = int(input("\nEnter Member ID number: "))
+        amount = float(input("Enter Amount (e.g., 250.50): R "))
+    except ValueError:
+        print("❌ Error: Invalid input formatting. Numbers only.")
+        conn.close()
+        return
+    
+    print("\nContribution Types:")
+    print("1. Tithe\n2. Offering\n3. Building Fund")
+    type_choice = input("Select Type (1-3): ").strip()
+
+    # map selection to the restricted database keywords
+    type_map = {'1': 'Tithe', '2': 'Offering', '3': 'Building Fund'}
+    contribution_type = type_map.get(type_choice)
+
+    if not contribution_type:
+        print("❌ Error: Invalid type selection.")
+        conn.close()
+        return
+    
+    # insert the transaction log
+    cursor.execute('''
+        INSERT INTO contributions (member_id, amount, type)
+        VALUES (?, ?, ?)
+    ''', (member_id, amount, contribution_type))
+
+    conn.commit()
+    print(f"\n✓ Success: R {amount:.2f} successfully processed as '{contribution_type}'!")
+    conn.close()
+    input("\nPress Enter to return...")
+
 def main_menu():
     """The main interface loop running in the console."""
     while True:
         print("\n=== OLD APOSTOLIC CHURCH MANAGEMENT SYSTEM ===")
-        print("Please choose a profile to simulate login:")
         print("1. Log in as Deacon Khumalo (Underdeacon)")
         print("2. Log in as Apostle Mkhathali (Apostle)")
-        print("3. Exit System")
+        print("3. 📝 Register a New Member")
+        print("4. 💰 Capture Member Contribution")
+        print("5. Exit System")
 
-        choice = input("\nEnter your choice (1-3):").strip()
+        choice = input("\nEnter your choice (1-5):").strip()
 
         if choice == '1':
             # ID 1 belongs to deacon khumalo from our seed data
@@ -175,10 +265,14 @@ def main_menu():
             #ID 3 belongs to apostle mkhathali from our seed data
             show_apostle_dashboard("Apostle Mkhathali")
         elif choice == '3':
+            add_new_member()
+        elif choice == '4':
+            record_contribution()
+        elif choice == '5':
             print("\nExiting system. Thanks for your service!")
             break
         else:
-            print("\n Invalid option. Please enter 1, 2, or 3.")
+            print("\n❌ Invalid option. Please enter a number between 1 and 5.")
 
 if __name__ == "__main__":
     # runs automatically when you execute the script
